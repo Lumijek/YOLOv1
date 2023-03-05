@@ -63,18 +63,18 @@ class YoloDataset(Dataset):
 @torch.no_grad()
 def nms(boxes, conf_threshold, iou_threshold):
 	boxes = boxes.detach().clone()
-	# boxes of shape (S, S, 4)
+	# boxes of shape (S, S, 30)
 	S = boxes.shape[0]
 
 	cr = torch.arange(S * S) // S
-	cc = torch.arange(S * S) % S
+	cc = torch.arange(S * S) % S 
 	boxes = boxes.view(-1, 30)
 	boxes[:, 0] = (boxes[:, 0] + cr) / S - boxes[:, 2] / 2 # convert x and y from respect to cell
 	boxes[:, 1] = (boxes[:, 1] + cc) / S - boxes[:, 3] / 2 # to respect to whole image
-	bclass = torch.max(boxes[:, 10:], dim=1)[1]
-	boxes = torch.cat([boxes[:, 0:5], boxes[:, 5:10]], dim=0)
-	boxes = torch.cat([boxes, bclass.repeat(2).unsqueeze(-1)], dim=1)
-	boxlist = boxes[boxes[:, 4] > conf_threshold].tolist()
+	bclass = torch.max(boxes[:, 10:], dim=1)[1] # get class of object
+	boxes = torch.cat([boxes[:, 0:5], boxes[:, 5:10]], dim=0) # concatenate both bounding box predictions
+	boxes = torch.cat([boxes, bclass.repeat(2).unsqueeze(-1)], dim=1) # concatenate class to end
+	boxlist = boxes[boxes[:, 4] > conf_threshold].tolist() # filter by boxes with confidence > conf_threshold
 	boxlist = sorted(boxlist, key=lambda x: x[4], reverse=True)
 
 	good_boxes = []
@@ -95,7 +95,7 @@ def show_image(inp):
 	o = o[0]
 	S = o.shape[0]
 	i = i[0].permute(1, 2, 0).numpy()
-	outs = nms(o, 0.997, 0.3)
+	outs = nms(o, 0.50, 0.3)
 	for o2 in outs:
 		xmin = float(o2[0])
 		ymin = float(o2[1])

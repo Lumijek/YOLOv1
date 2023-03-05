@@ -52,7 +52,7 @@ class YoloLoss(nn.Module):
 		obj_labels = labels[object_inds]
 
 		noobj_preds = predictions[~object_inds]
-		noobj_labels = predictions[~object_inds]
+		noobj_labels = labels[~object_inds]
 
 		# Coordinate losses precalculation
 
@@ -96,6 +96,8 @@ class YoloLoss(nn.Module):
 		loss = (coord_loss + confidence_loss + classification_loss) / predictions.shape[0]
 
 		return loss
+
+
 
 
 

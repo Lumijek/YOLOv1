@@ -10,11 +10,14 @@ from loss import YoloLoss
 from model import YOLOv1
 from dataset import *
 
+device = torch.device("cpu")
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
 
-# LOSS FUNCTION TAKES IN PREDICTIONS THEN LABELS
-#torch.manual_seed(0)
+
 epochs = 150
-device = torch.device("mps")
 batch_size = 64
 classes = ['horse', 'person', 'bottle', 'dog', 'tvmonitor', 'car', 'aeroplane', 'bicycle', 'boat', 'chair', 'diningtable', 'pottedplant', 'train', 'cat', 'sofa', 'bird', 'sheep', 'motorbike', 'bus', 'cow']
 dataloader = get_dataset(batch_size)
@@ -30,7 +33,7 @@ def train_network(model, optimizer, criterion, epochs, dataloader, device):
     model = model.to(device)
     cycle = 0
     for epoch in tqdm(range(epochs), desc="Epoch"):
-        if epoch == 10:
+        if epoch == 20:
             optimizer.param_groups[0]["lr"] = 0.005
         if epoch == 80:
             optimizer.param_groups[0]["lr"] = 0.001
@@ -56,9 +59,6 @@ def train_network(model, optimizer, criterion, epochs, dataloader, device):
 
 if __name__ == '__main__':
     train_network(model, optimizer, loss_func, epochs, dataloader, device)
-
-
-
 
 
 
