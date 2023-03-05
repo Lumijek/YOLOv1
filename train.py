@@ -6,8 +6,8 @@ import numpy as np
 from pprint import pprint
 from tqdm import tqdm
 
-from loss import YoloLoss, nms
-from model2 import YOLOv1
+from loss import YoloLoss
+from model import YOLOv1
 from dataset import *
 
 
@@ -15,7 +15,7 @@ from dataset import *
 #torch.manual_seed(0)
 epochs = 150
 device = torch.device("mps")
-batch_size = 16
+batch_size = 64
 classes = ['horse', 'person', 'bottle', 'dog', 'tvmonitor', 'car', 'aeroplane', 'bicycle', 'boat', 'chair', 'diningtable', 'pottedplant', 'train', 'cat', 'sofa', 'bird', 'sheep', 'motorbike', 'bus', 'cow']
 dataloader = get_dataset(batch_size)
 
@@ -55,8 +55,7 @@ def train_network(model, optimizer, criterion, epochs, dataloader, device):
 
 
 if __name__ == '__main__':
-	train_network(model, optimizer, loss_func, epochs, dataloader, device)		
-
+    train_network(model, optimizer, loss_func, epochs, dataloader, device)
 
 
 

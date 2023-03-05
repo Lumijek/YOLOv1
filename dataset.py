@@ -7,6 +7,11 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from pprint import pprint
 from time import perf_counter as pf
+from loss import iou
+
+classes = ['horse', 'person', 'bottle', 'dog', 'tvmonitor', 'car', 'aeroplane', 'bicycle', 'boat', 'chair', 'diningtable', 'pottedplant', 'train', 'cat', 'sofa', 'bird', 'sheep', 'motorbike', 'bus', 'cow']
+image_size = 448
+
 
 class YoloDataset(Dataset):
 	def __init__(self, data, S=7, B=2, C=20, image_size=448):
@@ -55,8 +60,33 @@ class YoloDataset(Dataset):
 
 		return self.data[idx][0], label
 
-classes = ['horse', 'person', 'bottle', 'dog', 'tvmonitor', 'car', 'aeroplane', 'bicycle', 'boat', 'chair', 'diningtable', 'pottedplant', 'train', 'cat', 'sofa', 'bird', 'sheep', 'motorbike', 'bus', 'cow']
-image_size = 448
+@torch.no_grad()
+def nms(boxes, conf_threshold, iou_threshold):
+	boxes = boxes.detach().clone()
+	# boxes of shape (S, S, 4)
+	S = boxes.shape[0]
+
+	cr = torch.arange(S * S) // S
+	cc = torch.arange(S * S) % S
+	boxes = boxes.view(-1, 30)
+	boxes[:, 0] = (boxes[:, 0] + cr) / S - boxes[:, 2] / 2 # convert x and y from respect to cell
+	boxes[:, 1] = (boxes[:, 1] + cc) / S - boxes[:, 3] / 2 # to respect to whole image
+	bclass = torch.max(boxes[:, 10:], dim=1)[1]
+	boxes = torch.cat([boxes[:, 0:5], boxes[:, 5:10]], dim=0)
+	boxes = torch.cat([boxes, bclass.repeat(2).unsqueeze(-1)], dim=1)
+	boxlist = boxes[boxes[:, 4] > conf_threshold].tolist()
+	boxlist = sorted(boxlist, key=lambda x: x[4], reverse=True)
+
+	good_boxes = []
+	while len(boxlist) > 0:
+		best_box = boxlist.pop(0)
+		for box in boxlist:
+			if int(best_box[5]) == int(box[5]):
+				curr_iou = iou(torch.tensor(best_box[:4]).unsqueeze(0), torch.tensor(box[:4]).unsqueeze(0))
+				if  curr_iou > iou_threshold:
+					boxlist.remove(box)
+		good_boxes.append(best_box)
+	return torch.tensor(good_boxes)
 
 @torch.no_grad()
 def show_image(inp):
@@ -65,16 +95,10 @@ def show_image(inp):
 	o = o[0]
 	S = o.shape[0]
 	i = i[0].permute(1, 2, 0).numpy()
-	outs = o[o[:, :, 4] > 0.993]
-	print(outs.shape)
+	outs = nms(o, 0.997, 0.3)
 	for o2 in outs:
-
-		o2[4:] += 1e-4
-		a = (o == o2).nonzero(as_tuple=True)[:2]
-		si, sj = torch.mode(a[0]).values, torch.mode(a[1]).values
-
-		xmin = float(((o2[0] + si) / S) - o2[2] / 2)
-		ymin = float(((o2[1] + sj) / S) - o2[3] / 2)
+		xmin = float(o2[0])
+		ymin = float(o2[1])
 		width = float(o2[2])
 		height = float(o2[3])
 		rect = patches.Rectangle((xmin * image_size , ymin * image_size), width * image_size, height * image_size, linewidth=1, edgecolor='r', facecolor='none')
@@ -82,7 +106,6 @@ def show_image(inp):
 
 	ax.imshow(i)
 	plt.show()
-
 transform = transforms.Compose(
 	[
 	transforms.Resize((image_size, image_size)),
@@ -92,6 +115,6 @@ transform = transforms.Compose(
 )
 
 def get_dataset(batch_size=16, S=7, B=2, C=20, image_size=448):
-	data = torchvision.datasets.VOCDetection("data", '2012', 'train', download=False, transform=transform)
+	data = torchvision.datasets.VOCDetection("data", '2012', 'trainval', download=False, transform=transform)
 	dataloader = DataLoader(YoloDataset(data, S, B, C, image_size), batch_size=batch_size, num_workers=0, pin_memory=True, shuffle=True)
 	return dataloader

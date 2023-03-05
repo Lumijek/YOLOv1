@@ -9,13 +9,13 @@ class ConvLayer(nn.Module):
 		if padding == None:
 			padding = kernel_size // 2
 
-		bn = nn.Identity()
+		norm = nn.Identity()
 		if bn == True:
-			bn = nn.BatchNorm2d(out_channels)
+			norm = nn.BatchNorm2d(out_channels)
 
 		self.layer = nn.Sequential(
 			nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
-			bn,
+			norm,
 			nn.LeakyReLU(alpha)
 		)
 
@@ -90,8 +90,4 @@ class YOLOv1(nn.Module):
 		x = self.ffn(x)
 		x = x.view(-1, self.S, self.S, (self.B * 5 + self.C))
 		return x
-
-
-
-
 

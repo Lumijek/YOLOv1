@@ -29,28 +29,6 @@ def iou(bbox1, bbox2):
 	#out = out.nan_to_num(1)
 	return out
 
-@torch.no_grad()
-def nms(boxes, conf_threshold, iou_threshold):
-	# boxes of shape (S, S, 4)
-	boxes = boxes.view(-1, 30)
-	bclass = torch.max(boxes[:, 10:], dim=1)[1]
-	bclass = torch.stack([bclass, bclass.clone()], dim=1).view(-1)
-	boxes = torch.cat([boxes[:, 0:5], boxes[:, 5:10]], dim=0)
-	boxes = torch.cat([boxes, bclass.unsqueeze(-1)], dim=1)
-	boxlist = boxes[boxes[:, 4] > conf_threshold].tolist()
-	boxlist = sorted(boxlist, key=lambda x: x[4], reverse=True)
-
-	good_boxes = []
-	while len(boxlist) > 0:
-		best_box = boxlist.pop(0)
-		for box in boxlist:
-			if int(best_box[4]) == int(box[4]):
-				curr_iou = iou(torch.tensor(best_box[:4]).unsqueeze(0), torch.tensor(box[:4]).unsqueeze(0))
-				if  curr_iou > iou_threshold:
-					boxlist.remove(box)
-		good_boxes.append(best_box)
-	return torch.tensor(good_boxes)
-
 class YoloLoss(nn.Module):
 	def __init__(self, lambda_coord=5, lambda_noobj=0.5, S=7, B=2, C=20):
 		super().__init__()
